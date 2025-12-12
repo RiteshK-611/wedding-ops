@@ -22,7 +22,7 @@ import {
 import { useStore } from '@/store';
 
 const navigation = [
-    { name: 'Dashboard', href: '/', icon: LayoutDashboard },
+    { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
     { name: 'Guests', href: '/guests', icon: Users },
     { name: 'Events', href: '/events', icon: Calendar },
     { name: 'Accommodations', href: '/accommodations', icon: Hotel },
@@ -55,14 +55,18 @@ export default function DashboardLayout({
 
     // Redirect to onboarding if no wedding (wait for profile to load)
     useEffect(() => {
-        console.log('[Dashboard] Wedding check - loading:', loading, 'user:', !!user, 'profile:', profile, 'currentWedding:', !!currentWedding);
+        console.log('[Dashboard] Wedding check - loading:', loading, 'user:', !!user, 'profile:', profile, 'currentWedding:', currentWedding?.id);
         // Only redirect to onboarding if:
         // 1. Not loading
         // 2. User is authenticated
         // 3. Profile has loaded (not null)
-        // 4. No wedding exists (neither in profile nor in local store)
-        if (!loading && user && profile !== null && !profile.weddingId && !currentWedding) {
-            console.log('[Dashboard] No wedding, redirecting to onboarding');
+        // 4. Profile has no wedding ID (database is source of truth)
+        if (!loading && user && profile !== null && !profile.weddingId) {
+            console.log('[Dashboard] No wedding in profile, clearing local store and redirecting to onboarding');
+            // Clear stale wedding data from local store if it exists
+            if (currentWedding) {
+                useStore.getState().setCurrentWedding(null);
+            }
             router.push('/onboarding');
         }
     }, [loading, user, profile, currentWedding, router]);

@@ -1,16 +1,18 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { useStore } from '@/store';
 import { useAuth } from '@/contexts/AuthContext';
 import type { User } from '@/types';
-import { Loader2 } from 'lucide-react';
+import { Loader2, ArrowLeft } from 'lucide-react';
 
-export default function LoginPage() {
+function LoginContent() {
+    const searchParams = useSearchParams();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [isSignUp, setIsSignUp] = useState(false);
+    const [isSignUp, setIsSignUp] = useState(searchParams.get('signup') === 'true');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [signUpSuccess, setSignUpSuccess] = useState(false);
@@ -18,7 +20,24 @@ export default function LoginPage() {
 
     const router = useRouter();
     const setCurrentUser = useStore((state) => state.setCurrentUser);
-    const { signIn, signUp, isConfigured } = useAuth();
+    const currentWedding = useStore((state) => state.currentWedding);
+    const { signIn, signUp, isConfigured, user, profile, loading: authLoading } = useAuth();
+
+    // Redirect authenticated users
+    useEffect(() => {
+        if (!authLoading && user && profile !== null) {
+            // Profile's weddingId is the source of truth from database
+            if (profile.weddingId) {
+                router.push('/dashboard');
+            } else {
+                // No wedding in profile - clear any stale local data and go to onboarding
+                if (currentWedding) {
+                    useStore.getState().setCurrentWedding(null);
+                }
+                router.push('/onboarding');
+            }
+        }
+    }, [authLoading, user, profile, currentWedding, router]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -43,7 +62,7 @@ export default function LoginPage() {
                 }
 
                 // If signing up, show success message and switch to sign in
-                // If signing in, go to dashboard (it will redirect to onboarding if needed)
+                // If signing in, redirect will happen via useEffect
                 if (isSignUp && 'needsEmailConfirmation' in result) {
                     setSignUpSuccess(true);
                     setNeedsEmailConfirmation(Boolean(result.needsEmailConfirmation));
@@ -51,11 +70,12 @@ export default function LoginPage() {
                     setPassword(''); // Clear password for security
                     setLoading(false);
                 } else {
-                    window.location.href = '/';
+                    // Sign in successful - useEffect will handle redirect
+                    setLoading(false);
                 }
             } else {
                 // Fallback to mock login
-                const user: User = {
+                const mockUser: User = {
                     id: '1',
                     email,
                     name: email.split('@')[0],
@@ -65,8 +85,13 @@ export default function LoginPage() {
                     lastLogin: new Date().toISOString(),
                 };
 
-                setCurrentUser(user);
-                window.location.href = '/';
+                setCurrentUser(mockUser);
+                // For mock login, redirect based on wedding state
+                if (currentWedding) {
+                    router.push('/dashboard');
+                } else {
+                    router.push('/onboarding');
+                }
             }
         } catch (err) {
             console.error('Login error:', err);
@@ -75,9 +100,37 @@ export default function LoginPage() {
         }
     };
 
+    // Show loading state while checking auth
+    if (authLoading) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-slate-50">
+                <Loader2 className="w-8 h-8 animate-spin text-primary-600" />
+            </div>
+        );
+    }
+
+    // If user is authenticated, show loading while redirecting
+    if (user) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-slate-50">
+                <Loader2 className="w-8 h-8 animate-spin text-primary-600" />
+            </div>
+        );
+    }
+
     return (
         <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
             <div className="max-w-md w-full">
+                <div className="mb-6">
+                    <Link 
+                        href="/" 
+                        className="inline-flex items-center text-sm text-slate-600 hover:text-slate-900 transition-colors"
+                    >
+                        <ArrowLeft className="w-4 h-4 mr-1" />
+                        Back to home
+                    </Link>
+                </div>
+
                 <div className="text-center mb-8">
                     <div className="w-16 h-16 bg-primary-600 rounded-2xl flex items-center justify-center text-white text-2xl font-bold mx-auto mb-4">
                         W
@@ -130,70 +183,86 @@ export default function LoginPage() {
                                 </div>
                             )}
 
-                    <form onSubmit={handleSubmit} className="space-y-4">
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">
-                                Email
-                            </label>
-                            <input
-                                type="email"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                                placeholder="you@example.com"
-                                required
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">
-                                Password
-                            </label>
-                            <input
-                                type="password"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                                placeholder="••••••••"
-                                required
-                                minLength={6}
-                            />
-                        </div>
-                        <button
-                            type="submit"
-                            className="w-full bg-primary-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
-                            disabled={loading}
-                        >
-                            {loading ? (
-                                <>
-                                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                                    {isSignUp ? 'Creating Account...' : 'Signing In...'}
-                                </>
-                            ) : (
-                                isSignUp ? 'Create Account' : 'Sign In'
-                            )}
-                        </button>
-                    </form>
+                            <form onSubmit={handleSubmit} className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">
+                                        Email
+                                    </label>
+                                    <input
+                                        type="email"
+                                        value={email}
+                                        onChange={(e) => setEmail(e.target.value)}
+                                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                        placeholder="you@example.com"
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">
+                                        Password
+                                    </label>
+                                    <input
+                                        type="password"
+                                        value={password}
+                                        onChange={(e) => setPassword(e.target.value)}
+                                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                        placeholder="••••••••"
+                                        required
+                                        minLength={6}
+                                    />
+                                </div>
+                                <button
+                                    type="submit"
+                                    className="w-full bg-primary-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                                    disabled={loading}
+                                >
+                                    {loading ? (
+                                        <>
+                                            <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                                            {isSignUp ? 'Creating Account...' : 'Signing In...'}
+                                        </>
+                                    ) : (
+                                        isSignUp ? 'Create Account' : 'Sign In'
+                                    )}
+                                </button>
+                            </form>
 
-                    {isConfigured ? (
-                        <p className="text-sm text-slate-600 text-center mt-4">
-                            {isSignUp ? 'Already have an account?' : "Don't have an account?"}{' '}
-                            <button
-                                type="button"
-                                onClick={() => setIsSignUp(!isSignUp)}
-                                className="text-primary-600 hover:underline font-medium"
-                            >
-                                {isSignUp ? 'Sign In' : 'Sign Up'}
-                            </button>
-                        </p>
-                    ) : (
-                        <p className="text-sm text-slate-600 text-center mt-4">
-                            Demo mode: Enter any email and password to continue
-                        </p>
-                    )}
+                            {isConfigured ? (
+                                <p className="text-sm text-slate-600 text-center mt-4">
+                                    {isSignUp ? 'Already have an account?' : "Don't have an account?"}{' '}
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsSignUp(!isSignUp)}
+                                        className="text-primary-600 hover:underline font-medium"
+                                    >
+                                        {isSignUp ? 'Sign In' : 'Sign Up'}
+                                    </button>
+                                </p>
+                            ) : (
+                                <p className="text-sm text-slate-600 text-center mt-4">
+                                    Demo mode: Enter any email and password to continue
+                                </p>
+                            )}
                         </>
                     )}
                 </div>
             </div>
         </div>
+    );
+}
+
+function LoginFallback() {
+    return (
+        <div className="min-h-screen flex items-center justify-center bg-slate-50">
+            <Loader2 className="w-8 h-8 animate-spin text-primary-600" />
+        </div>
+    );
+}
+
+export default function LoginPage() {
+    return (
+        <Suspense fallback={<LoginFallback />}>
+            <LoginContent />
+        </Suspense>
     );
 }

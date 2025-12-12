@@ -1,9 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSupabaseSync } from '@/hooks/useSupabaseSync';
-import { ChevronRight, ChevronLeft, Calendar, MapPin, Users, Check } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { useStore } from '@/store';
+import { ChevronRight, ChevronLeft, Calendar, MapPin, Users, Check, Loader2, LogOut } from 'lucide-react';
 import type { Event } from '@/types';
 
 const steps = ['Couple Info', 'Venue', 'Events', 'Review'];
@@ -11,11 +13,13 @@ const steps = ['Couple Info', 'Venue', 'Events', 'Review'];
 export default function OnboardingPage() {
     const router = useRouter();
     const { createWeddingWithData } = useSupabaseSync();
+    const { user, profile, loading: authLoading, signOut } = useAuth();
+    const currentWedding = useStore((state) => state.currentWedding);
     const [currentStep, setCurrentStep] = useState(0);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
-    // Form data
+    // Form data - ALL hooks must be declared before any conditional returns
     const [weddingData, setWeddingData] = useState({
         coupleName1: '',
         coupleName2: '',
@@ -44,13 +48,27 @@ export default function OnboardingPage() {
         { name: 'Reception', eventType: 'reception', eventDate: '', startTime: '' },
     ]);
 
+    // Redirect unauthenticated users to login page
+    useEffect(() => {
+        if (!authLoading && !user) {
+            router.push('/login');
+        }
+    }, [authLoading, user, router]);
+
+    // Redirect users who already have a wedding to dashboard
+    useEffect(() => {
+        if (!authLoading && user && (profile?.weddingId || currentWedding)) {
+            router.push('/dashboard');
+        }
+    }, [authLoading, user, profile, currentWedding, router]);
+
     const handleFinish = async () => {
         setLoading(true);
         setError('');
 
         try {
             await createWeddingWithData(weddingData, venueData, eventsData);
-            router.push('/');
+            router.push('/dashboard');
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to create wedding');
         } finally {
@@ -70,6 +88,15 @@ export default function OnboardingPage() {
                 return true;
         }
     };
+
+    // Show loading state while checking auth (MUST be after all hooks)
+    if (authLoading || !user) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-slate-50">
+                <Loader2 className="w-8 h-8 animate-spin text-primary-600" />
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-slate-50 py-12 px-4">
@@ -315,14 +342,33 @@ export default function OnboardingPage() {
 
                     {/* Navigation */}
                     <div className="flex justify-between mt-8">
-                        <button
-                            onClick={() => setCurrentStep(currentStep - 1)}
-                            disabled={currentStep === 0}
-                            className="btn-secondary flex items-center gap-2"
-                        >
-                            <ChevronLeft className="w-4 h-4" />
-                            Back
-                        </button>
+                        {currentStep === 0 ? (
+                            <button
+                                onClick={async () => {
+                                    console.log('[Onboarding] Sign out clicked');
+                                    try {
+                                        await signOut();
+                                        console.log('[Onboarding] Sign out successful, redirecting...');
+                                    } catch (err) {
+                                        console.error('[Onboarding] Sign out error:', err);
+                                    }
+                                    // Force full page reload to clear all state
+                                    window.location.href = '/login';
+                                }}
+                                className="btn-secondary flex items-center gap-2"
+                            >
+                                <LogOut className="w-4 h-4" />
+                                Sign Out
+                            </button>
+                        ) : (
+                            <button
+                                onClick={() => setCurrentStep(currentStep - 1)}
+                                className="btn-secondary flex items-center gap-2"
+                            >
+                                <ChevronLeft className="w-4 h-4" />
+                                Back
+                            </button>
+                        )}
 
                         {currentStep < steps.length - 1 ? (
                             <button
