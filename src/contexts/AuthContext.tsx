@@ -42,45 +42,53 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const isConfigured = isSupabaseConfigured();
 
     useEffect(() => {
+        console.log('[Auth] Starting auth initialization, isConfigured:', isConfigured);
+        
         if (!isConfigured) {
+            console.log('[Auth] Supabase not configured, setting loading false');
             setLoading(false);
             return;
         }
 
         // Handle confirmation/magic-link redirects that include tokens in the URL hash
-        // Example: https://app/#access_token=...&refresh_token=...
-        try {
-            if (typeof window !== 'undefined' && window.location.hash) {
-                const hash = window.location.hash.substring(1);
-                const params = new URLSearchParams(hash);
-                const accessToken = params.get('access_token');
-                const refreshToken = params.get('refresh_token');
-                if (accessToken && refreshToken) {
-                    // Set session from hash tokens
-                    supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken })
-                        .then(({ data, error }) => {
-                            if (error) {
-                                console.warn('Failed to set session from hash:', error);
+        // Example: https://app/login#access_token=...&refresh_token=...
+        if (typeof window !== 'undefined' && window.location.hash) {
+            const hash = window.location.hash.substring(1);
+            const params = new URLSearchParams(hash);
+            const accessToken = params.get('access_token');
+            const refreshToken = params.get('refresh_token');
+            
+            if (accessToken && refreshToken) {
+                console.log('[Auth] Found tokens in hash, setting session...');
+                // Clean up the hash immediately to prevent reprocessing
+                window.history.replaceState(null, '', window.location.pathname + window.location.search);
+                
+                // Set session from hash tokens
+                supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken })
+                    .then(({ data, error }) => {
+                        if (error) {
+                            console.warn('[Auth] Failed to set session from hash:', error);
+                            setLoading(false);
+                        } else {
+                            console.log('[Auth] Session set from hash, user:', data.session?.user?.email);
+                            // Don't reload, let the normal flow continue
+                            setSession(data.session);
+                            setUser(data.session?.user ?? null);
+                            if (data.session?.user) {
+                                fetchProfile(data.session.user.id);
                             } else {
-                                setSession(data.session ?? null);
-                                setUser(data.session?.user ?? null);
+                                setLoading(false);
                             }
-                        })
-                        .finally(() => {
-                            // Clean up the hash to avoid reprocessing on navigation
-                            window.history.replaceState(null, '', window.location.pathname + window.location.search);
-                            // After confirmation flow, direct user to the sign-in page
-                            // so they can log in (matches desired UX)
-                            window.location.assign('/login');
-                        });
-                }
+                        }
+                    });
+                return; // Don't proceed with normal getSession while processing hash
             }
-        } catch (e) {
-            console.warn('Error processing auth hash tokens:', e);
         }
 
         // Get initial session
+        console.log('[Auth] Getting initial session...');
         supabase.auth.getSession().then(({ data: { session } }) => {
+            console.log('[Auth] Got session:', session?.user?.email ?? 'no session');
             setSession(session);
             setUser(session?.user ?? null);
             if (session?.user) {
@@ -94,6 +102,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const {
             data: { subscription },
         } = supabase.auth.onAuthStateChange(async (_event, session) => {
+            console.log('[Auth] Auth state changed:', _event, session?.user?.email);
             setSession(session);
             setUser(session?.user ?? null);
 
@@ -110,6 +119,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }, [isConfigured]);
 
     async function fetchProfile(userId: string) {
+        console.log('[Auth] Fetching profile for user:', userId);
         try {
             const { data, error } = await supabase
                 .from('users')
@@ -118,9 +128,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 .single();
 
             if (error) {
+                console.log('[Auth] Profile fetch error:', error.code, error.message);
                 // If user doesn't exist in public.users, try to create the profile
                 if (error.code === 'PGRST116') {
-                    console.log('User profile not found, attempting to create...');
+                    console.log('[Auth] User profile not found, attempting to create...');
 
                     // Try to ensure user profile exists via RPC
                     const { error: rpcError } = await supabase.rpc('ensure_user_profile');
@@ -166,8 +177,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 role: data.role as UserRole,
                 weddingId: data.wedding_id,
             });
+            console.log('[Auth] Profile loaded:', { id: data.id, weddingId: data.wedding_id });
         } catch (error) {
-            console.error('Error fetching profile:', error);
+            console.error('[Auth] Error fetching profile:', error);
             // Create a fallback profile so the app doesn't break
             setProfile({
                 id: userId,
@@ -175,7 +187,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 role: 'planner' as UserRole,
                 weddingId: null,
             });
+            console.log('[Auth] Using fallback profile');
         } finally {
+            console.log('[Auth] Setting loading to false');
             setLoading(false);
         }
     }

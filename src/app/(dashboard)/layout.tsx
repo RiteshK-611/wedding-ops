@@ -42,16 +42,27 @@ export default function DashboardLayout({
     const currentUser = useStore((state) => state.currentUser);
     const { signOut, user, profile, loading } = useAuth();
 
+    console.log('[Dashboard] State:', { loading, user: user?.email, profile: profile?.weddingId, currentWedding: currentWedding?.id });
+
     // Redirect to login if not authenticated
     useEffect(() => {
+        console.log('[Dashboard] Auth check - loading:', loading, 'user:', !!user);
         if (!loading && !user) {
+            console.log('[Dashboard] No user, redirecting to login');
             router.push('/login');
         }
     }, [loading, user, router]);
 
-    // Redirect to onboarding if no wedding
+    // Redirect to onboarding if no wedding (wait for profile to load)
     useEffect(() => {
-        if (!loading && user && profile && !profile.weddingId && !currentWedding) {
+        console.log('[Dashboard] Wedding check - loading:', loading, 'user:', !!user, 'profile:', profile, 'currentWedding:', !!currentWedding);
+        // Only redirect to onboarding if:
+        // 1. Not loading
+        // 2. User is authenticated
+        // 3. Profile has loaded (not null)
+        // 4. No wedding exists (neither in profile nor in local store)
+        if (!loading && user && profile !== null && !profile.weddingId && !currentWedding) {
+            console.log('[Dashboard] No wedding, redirecting to onboarding');
             router.push('/onboarding');
         }
     }, [loading, user, profile, currentWedding, router]);
@@ -62,8 +73,8 @@ export default function DashboardLayout({
         router.push('/login');
     };
 
-    // Show loading state while checking auth
-    if (loading) {
+    // Show loading state while checking auth or waiting for profile
+    if (loading || (user && profile === null)) {
         return (
             <div className="min-h-screen bg-slate-50 flex items-center justify-center">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
