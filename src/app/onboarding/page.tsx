@@ -31,6 +31,7 @@ export default function OnboardingPage() {
         address: '',
         city: '',
         country: '',
+        spaces: [] as Array<{ id: string; name: string; capacity?: number; isIndoor: boolean }>,
     });
 
     const [eventsData, setEventsData] = useState<Array<{
