@@ -13,6 +13,8 @@ export default function LoginPage() {
     const [isSignUp, setIsSignUp] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [signUpSuccess, setSignUpSuccess] = useState(false);
+    const [needsEmailConfirmation, setNeedsEmailConfirmation] = useState(false);
 
     const router = useRouter();
     const setCurrentUser = useStore((state) => state.setCurrentUser);
@@ -32,14 +34,22 @@ export default function LoginPage() {
 
                 if (result.error) {
                     setError(result.error.message);
+                    // If user exists, switch to sign-in mode
+                    if ('userExists' in result && result.userExists) {
+                        setIsSignUp(false);
+                    }
                     setLoading(false);
                     return;
                 }
 
-                // If signing up, go to onboarding
+                // If signing up, show success message and switch to sign in
                 // If signing in, go to dashboard (it will redirect to onboarding if needed)
-                if (isSignUp) {
-                    window.location.href = '/onboarding';
+                if (isSignUp && 'needsEmailConfirmation' in result) {
+                    setSignUpSuccess(true);
+                    setNeedsEmailConfirmation(Boolean(result.needsEmailConfirmation));
+                    setIsSignUp(false); // Switch to sign-in mode
+                    setPassword(''); // Clear password for security
+                    setLoading(false);
                 } else {
                     window.location.href = '/';
                 }
@@ -79,11 +89,46 @@ export default function LoginPage() {
                 </div>
 
                 <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-                    {error && (
-                        <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
-                            {error}
+                    {signUpSuccess ? (
+                        <div className="text-center py-4">
+                            <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                </svg>
+                            </div>
+                            {needsEmailConfirmation ? (
+                                <>
+                                    <h3 className="text-lg font-semibold text-slate-900 mb-2">Check your email</h3>
+                                    <p className="text-slate-600 text-sm mb-4">
+                                        We&apos;ve sent a confirmation link to <strong>{email}</strong>. 
+                                        Please click the link to verify your account, then sign in.
+                                    </p>
+                                </>
+                            ) : (
+                                <>
+                                    <h3 className="text-lg font-semibold text-slate-900 mb-2">Account created!</h3>
+                                    <p className="text-slate-600 text-sm mb-4">
+                                        Your account has been created successfully. Please sign in with your credentials.
+                                    </p>
+                                </>
+                            )}
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setSignUpSuccess(false);
+                                }}
+                                className="text-primary-600 hover:underline font-medium text-sm"
+                            >
+                                Sign In Now
+                            </button>
                         </div>
-                    )}
+                    ) : (
+                        <>
+                            {error && (
+                                <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
+                                    {error}
+                                </div>
+                            )}
 
                     <form onSubmit={handleSubmit} className="space-y-4">
                         <div>
@@ -144,6 +189,8 @@ export default function LoginPage() {
                         <p className="text-sm text-slate-600 text-center mt-4">
                             Demo mode: Enter any email and password to continue
                         </p>
+                    )}
+                        </>
                     )}
                 </div>
             </div>

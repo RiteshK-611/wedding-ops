@@ -20,7 +20,7 @@ interface AuthContextType {
     session: Session | null;
     loading: boolean;
     isConfigured: boolean;
-    signUp: (email: string, password: string) => Promise<{ error: Error | null }>;
+    signUp: (email: string, password: string) => Promise<{ error: Error | null; needsEmailConfirmation?: boolean; userExists?: boolean }>;
     signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
     signInWithProvider: (provider: Provider) => Promise<{ error: Error | null }>;
     signOut: () => Promise<void>;
@@ -45,6 +45,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!isConfigured) {
             setLoading(false);
             return;
+        }
+
+        // Handle confirmation/magic-link redirects that include tokens in the URL hash
+        // Example: https://app/#access_token=...&refresh_token=...
+        try {
+            if (typeof window !== 'undefined' && window.location.hash) {
+                const hash = window.location.hash.substring(1);
+                const params = new URLSearchParams(hash);
+                const accessToken = params.get('access_token');
+                const refreshToken = params.get('refresh_token');
+                if (accessToken && refreshToken) {
+                    // Set session from hash tokens
+                    supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken })
+                        .then(({ data, error }) => {
+                            if (error) {
+                                console.warn('Failed to set session from hash:', error);
+                            } else {
+                                setSession(data.session ?? null);
+                                setUser(data.session?.user ?? null);
+                            }
+                        })
+                        .finally(() => {
+                            // Clean up the hash to avoid reprocessing on navigation
+                            window.history.replaceState(null, '', window.location.pathname + window.location.search);
+                            // After confirmation flow, direct user to the sign-in page
+                            // so they can log in (matches desired UX)
+                            window.location.assign('/login');
+                        });
+                }
+            }
+        } catch (e) {
+            console.warn('Error processing auth hash tokens:', e);
         }
 
         // Get initial session
@@ -155,11 +187,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     async function signUp(email: string, password: string) {
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
             email,
             password,
+            options: {
+                emailRedirectTo: `${window.location.origin}/login`,
+            },
         });
-        return { error: error ? new Error(error.message) : null };
+        
+        // Check if user already exists (Supabase returns user with empty identities)
+        const userExists = data?.user && data.user.identities?.length === 0;
+        if (userExists) {
+            return { 
+                error: new Error('An account with this email already exists. Please sign in.'),
+                userExists: true
+            };
+        }
+        
+        // If session exists, email confirmation is disabled and user is logged in
+        // If no session, user needs to confirm their email
+        const needsEmailConfirmation = !data?.session;
+        return { 
+            error: error ? new Error(error.message) : null,
+            needsEmailConfirmation
+        };
     }
 
     async function signIn(email: string, password: string) {

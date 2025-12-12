@@ -140,12 +140,19 @@ export function useSupabaseSync() {
                 throw new Error('Failed to create wedding');
             }
 
-            console.log('[createWeddingWithData] Wedding created in Supabase. Refreshing profile...');
+            console.log('[createWeddingWithData] Wedding created in Supabase. Attempting profile refresh...');
 
-            // IMPORTANT: Refresh profile to get the new weddingId linked to the user
-            // This prevents the app from redirecting back to onboarding
-            await refreshProfile();
-            console.log('[createWeddingWithData] Profile refreshed.');
+            // Try to refresh the profile to pick up the new weddingId,
+            // but don't block overall flow if it takes too long or fails.
+            try {
+                await Promise.race([
+                    refreshProfile(),
+                    new Promise((resolve) => setTimeout(resolve, 2000)),
+                ]);
+                console.log('[createWeddingWithData] Profile refresh attempt completed.');
+            } catch (e) {
+                console.warn('[createWeddingWithData] Profile refresh failed, proceeding with local state only:', e);
+            }
 
             // Update local store
             store.setCurrentWedding(wedding);

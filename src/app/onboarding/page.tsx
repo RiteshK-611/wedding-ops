@@ -209,9 +209,9 @@ export default function OnboardingPage() {
                     {currentStep === 2 && (
                         <div className="space-y-4">
                             {eventsData.map((event, index) => (
-                                <div key={index} className="p-4 bg-slate-50 rounded-lg space-y-3">
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <div>
+                                <div key={index} className="p-4 bg-slate-50 rounded-lg">
+                                    <div className="flex gap-3 items-end">
+                                        <div className="flex-1">
                                             <label className="label">Event Name</label>
                                             <input
                                                 type="text"
@@ -224,7 +224,7 @@ export default function OnboardingPage() {
                                                 className="input"
                                             />
                                         </div>
-                                        <div>
+                                        <div className="flex-1">
                                             <label className="label">Date</label>
                                             <input
                                                 type="date"
@@ -237,6 +237,34 @@ export default function OnboardingPage() {
                                                 className="input"
                                             />
                                         </div>
+                                        <div className="flex-1">
+                                            <label className="label">Start Time</label>
+                                            <input
+                                                type="time"
+                                                value={event.startTime}
+                                                onChange={(e) => {
+                                                    const updated = [...eventsData];
+                                                    updated[index].startTime = e.target.value;
+                                                    setEventsData(updated);
+                                                }}
+                                                className="input"
+                                            />
+                                        </div>
+                                        {eventsData.length > 1 && (
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    const updated = eventsData.filter((_, i) => i !== index);
+                                                    setEventsData(updated);
+                                                }}
+                                                className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg mb-0.5"
+                                                title="Remove event"
+                                            >
+                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                </svg>
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
                             ))}
