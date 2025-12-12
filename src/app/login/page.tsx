@@ -135,7 +135,7 @@ function LoginContent() {
                     <div className="w-16 h-16 bg-primary-600 rounded-2xl flex items-center justify-center text-white text-2xl font-bold mx-auto mb-4">
                         W
                     </div>
-                    <h1 className="text-2xl font-bold text-slate-900">Wedding Ops</h1>
+                    <h1 className="text-2xl font-bold text-slate-900">Wedding Wingman</h1>
                     <p className="text-slate-600 mt-2">
                         {isSignUp ? 'Create your account' : 'Welcome back'}
                     </p>

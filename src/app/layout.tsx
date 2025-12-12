@@ -9,7 +9,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Wedding Ops - Wedding Planning Management",
+  title: "Wedding Wingman - Wedding Planning Management",
   description: "Comprehensive wedding planning and guest management platform",
 };
 

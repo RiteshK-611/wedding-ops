@@ -1,4 +1,4 @@
-// Test Data Seed Script for Wedding Ops
+// Test Data Seed Script for Wedding Wingman
 // This creates 200+ guests, 5 events, and realistic wedding data
 
 export function generateTestData() {

@@ -100,7 +100,7 @@ export default function DashboardLayout({
                                         W
                                     </div>
                                     <span className="font-semibold text-slate-900 truncate">
-                                        {currentWedding?.coupleName1 || 'Wedding Ops'}
+                                        {currentWedding?.coupleName1 || 'Wedding Wingman'}
                                     </span>
                                 </div>
                                 <button onClick={() => setSidebarOpen(false)} className="text-slate-500 hover:text-slate-700">
@@ -164,7 +164,7 @@ export default function DashboardLayout({
                             <span className="font-semibold text-slate-900 truncate">
                                 {currentWedding?.coupleName1 && currentWedding?.coupleName2
                                     ? `${currentWedding.coupleName1} & ${currentWedding.coupleName2}`
-                                    : 'Wedding Ops'}
+                                    : 'Wedding Wingman'}
                             </span>
                         </div>
                     </div>

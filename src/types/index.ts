@@ -1,4 +1,4 @@
-// Core data types for Wedding Ops
+// Core data types for Wedding Wingman
 
 export interface Wedding {
     id: string;

@@ -77,7 +77,7 @@ export default function LandingPage() {
                         <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center text-white font-bold text-sm">
                             W
                         </div>
-                        <span className="font-semibold text-slate-900">Wedding Ops</span>
+                        <span className="font-semibold text-slate-900">Wedding Wingman</span>
                     </Link>
                     <div className="flex items-center space-x-4">
                         <Link 
@@ -108,7 +108,7 @@ export default function LandingPage() {
                         <span className="text-primary-600">effortlessly</span>
                     </h1>
                     <p className="text-xl text-slate-600 max-w-2xl mx-auto mb-10 leading-relaxed">
-                        Wedding Ops brings together guest management, event planning, 
+                        Wedding Wingman brings together guest management, event planning, 
                         accommodations, and transportation in one elegant platform.
                     </p>
                     <Link 
@@ -163,7 +163,7 @@ export default function LandingPage() {
                         Ready to start planning?
                     </h2>
                     <p className="text-lg text-slate-600 mb-8">
-                        Join couples who trust Wedding Ops to organize their special day.
+                        Join couples who trust Wedding Wingman to organize their special day.
                     </p>
                     <Link 
                         href="/login?signup=true" 
@@ -182,10 +182,10 @@ export default function LandingPage() {
                         <div className="w-6 h-6 bg-primary-600 rounded flex items-center justify-center text-white font-bold text-xs">
                             W
                         </div>
-                        <span className="text-sm text-slate-600">Wedding Ops</span>
+                        <span className="text-sm text-slate-600">Wedding Wingman</span>
                     </div>
                     <p className="text-sm text-slate-500">
-                        © {new Date().getFullYear()} Wedding Ops. All rights reserved.
+                        © {new Date().getFullYear()} Wedding Wingman. All rights reserved.
                     </p>
                 </div>
             </footer>
